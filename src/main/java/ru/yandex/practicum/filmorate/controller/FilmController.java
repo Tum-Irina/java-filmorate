@@ -20,11 +20,7 @@ public class FilmController {
 
     private long getNextId() {
         log.debug("Начало генерации следующего ID");
-        long currentMaxId = films.keySet()
-                .stream()
-                .mapToLong(id -> id)
-                .max()
-                .orElse(0);
+        long currentMaxId = films.keySet().stream().mapToLong(id -> id).max().orElse(0);
         long nextId = ++currentMaxId;
         log.debug("Сгенерирован ID: {} (был максимальный: {})", nextId, currentMaxId);
         return nextId;
@@ -33,7 +29,6 @@ public class FilmController {
     @PostMapping
     public Film create(@Valid @RequestBody Film film) {
         log.info("Получен запрос на создание фильма: {}", film);
-        validateFilm(film);
         film.setId(getNextId());
         films.put(film.getId(), film);
         log.info("Фильм успешно создан с ID: {}", film.getId());
@@ -48,7 +43,6 @@ public class FilmController {
             log.warn("Ошибка обновления: {}", errorMessage);
             throw new ValidationException(errorMessage);
         }
-        validateFilm(film);
         films.put(film.getId(), film);
         log.info("Фильм с ID {} успешно обновлен", film.getId());
         return film;
@@ -58,13 +52,5 @@ public class FilmController {
     public Collection<Film> findAll() {
         log.info("Получен запрос на получение всех фильмов. Всего: {}", films.size());
         return films.values();
-    }
-
-    private void validateFilm(Film film) {
-        if (film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
-            String errorMessage = "Дата релиза " + film.getReleaseDate() + " не может быть раньше 28 декабря 1895 года";
-            log.warn("Ошибка валидации фильма: {}", errorMessage);
-            throw new ValidationException(errorMessage);
-        }
     }
 }
