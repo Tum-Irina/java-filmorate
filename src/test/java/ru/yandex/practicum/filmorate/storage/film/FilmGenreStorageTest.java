@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -88,11 +89,9 @@ class FilmGenreStorageTest {
     @Test
     void testDuplicateGenres() {
         filmGenreStorage.addGenreToFilm(testFilm.getId(), 1);
-        try {
+        assertThrows(org.springframework.dao.DuplicateKeyException.class, () -> {
             filmGenreStorage.addGenreToFilm(testFilm.getId(), 1);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
-
-        }
+        });
         Set<Genre> genres = filmGenreStorage.findGenresByFilmId(testFilm.getId());
         assertThat(genres).hasSize(1);
         assertThat(genres)
