@@ -7,8 +7,8 @@ import ru.yandex.practicum.filmorate.model.Genre;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,6 +18,7 @@ public class GenreDbStorage implements GenreStorage {
     private static final String FIND_ALL_GENRES_QUERY = "SELECT * FROM genres ORDER BY genre_id";
     private static final String FIND_GENRE_BY_ID_QUERY = "SELECT * FROM genres WHERE genre_id = ?";
     private static final String EXISTS_GENRE_BY_ID_QUERY = "SELECT COUNT(*) FROM genres WHERE genre_id = ?";
+    private static final String FIND_ALL_BY_IDS_QUERY = "SELECT genre_id FROM genres WHERE genre_id IN (%s)";
 
     @Override
     public Collection<Genre> findAll() {
@@ -29,6 +30,15 @@ public class GenreDbStorage implements GenreStorage {
         return jdbcTemplate.query(FIND_GENRE_BY_ID_QUERY, this::mapRowToGenre, id)
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public Set<Integer> findAllByIds(Set<Integer> genreIds) {
+        String placeholders = genreIds.stream()
+                .map(id -> "?")
+                .collect(Collectors.joining(","));
+        String sql = String.format(FIND_ALL_BY_IDS_QUERY, placeholders);
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Integer.class, genreIds.toArray()));
     }
 
     @Override

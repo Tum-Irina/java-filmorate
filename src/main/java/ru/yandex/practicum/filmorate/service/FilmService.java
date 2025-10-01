@@ -43,11 +43,14 @@ public class FilmService {
         if (film.getMpa() != null && film.getMpa().getId() != null) {
             mpaService.findById(film.getMpa().getId());
         }
-        if (film.getGenres() != null) {
-            for (Genre genre : film.getGenres()) {
-                if (genre.getId() != null) {
-                    genreService.findById(genre.getId());
-                }
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            Set<Integer> requestedGenreIds = film.getGenres().stream()
+                    .map(Genre::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Integer> existingGenreIds = genreService.findAllByIds(requestedGenreIds);
+            if (requestedGenreIds.size() != existingGenreIds.size()) {
+                throw new NotFoundException("Некоторые жанры не найдены");
             }
         }
         Film createdFilm = filmStorage.create(film);
@@ -55,9 +58,7 @@ public class FilmService {
             Set<Integer> uniqueGenreIds = film.getGenres().stream()
                     .map(Genre::getId)
                     .collect(Collectors.toSet());
-            for (Integer genreId : uniqueGenreIds) {
-                filmGenreStorage.addGenreToFilm(createdFilm.getId(), genreId);
-            }
+            filmGenreStorage.addAllGenresToFilm(createdFilm.getId(), uniqueGenreIds);
         }
         return findById(createdFilm.getId());
     }
@@ -69,11 +70,14 @@ public class FilmService {
         if (film.getMpa() != null && film.getMpa().getId() != null) {
             mpaService.findById(film.getMpa().getId());
         }
-        if (film.getGenres() != null) {
-            for (Genre genre : film.getGenres()) {
-                if (genre.getId() != null) {
-                    genreService.findById(genre.getId());
-                }
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            Set<Integer> requestedGenreIds = film.getGenres().stream()
+                    .map(Genre::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Integer> existingGenreIds = genreService.findAllByIds(requestedGenreIds);
+            if (requestedGenreIds.size() != existingGenreIds.size()) {
+                throw new NotFoundException("Некоторые жанры не найдены");
             }
         }
         Film updatedFilm = filmStorage.update(film);
@@ -82,17 +86,22 @@ public class FilmService {
             Set<Integer> uniqueGenreIds = film.getGenres().stream()
                     .map(Genre::getId)
                     .collect(Collectors.toSet());
-            for (Integer genreId : uniqueGenreIds) {
-                filmGenreStorage.addGenreToFilm(film.getId(), genreId);
-            }
+            filmGenreStorage.addAllGenresToFilm(film.getId(), uniqueGenreIds);
         }
         return findById(updatedFilm.getId());
     }
 
     public Collection<Film> findAll() {
         Collection<Film> films = filmStorage.findAll();
+        if (films.isEmpty()) {
+            return films;
+        }
+        List<Long> filmIds = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toList());
+        Map<Long, Set<Genre>> genresByFilmId = filmGenreStorage.findGenresByFilmIds(filmIds);
         for (Film film : films) {
-            Set<Genre> genres = filmGenreStorage.findGenresByFilmId(film.getId());
+            Set<Genre> genres = genresByFilmId.getOrDefault(film.getId(), Collections.emptySet());
             film.setGenres(genres);
         }
         return films;
@@ -126,17 +135,16 @@ public class FilmService {
 
     public Collection<Film> getPopularFilms(int count) {
         Collection<Film> films = filmStorage.findAll();
+        List<Long> filmIds = films.stream()
+                .map(Film::getId)
+                .collect(Collectors.toList());
+        Map<Long, Set<Genre>> genresByFilmId = filmGenreStorage.findGenresByFilmIds(filmIds);
         for (Film film : films) {
-            Set<Genre> genres = filmGenreStorage.findGenresByFilmId(film.getId());
+            Set<Genre> genres = genresByFilmId.getOrDefault(film.getId(), Collections.emptySet());
             film.setGenres(genres);
-            Set<Long> likes = filmLikeStorage.findLikesByFilmId(film.getId());
         }
         return films.stream()
-                .sorted((f1, f2) -> {
-                    int likes1 = filmLikeStorage.findLikesByFilmId(f1.getId()).size();
-                    int likes2 = filmLikeStorage.findLikesByFilmId(f2.getId()).size();
-                    return Integer.compare(likes2, likes1);
-                })
+                .sorted((f1, f2) -> Integer.compare(f2.getRate(), f1.getRate()))
                 .limit(count)
                 .collect(Collectors.toList());
     }

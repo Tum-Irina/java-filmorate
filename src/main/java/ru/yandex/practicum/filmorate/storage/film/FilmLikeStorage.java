@@ -16,13 +16,17 @@ public class FilmLikeStorage {
     private static final String REMOVE_LIKE_QUERY = "DELETE FROM film_likes WHERE film_id = ? AND user_id = ?";
     private static final String FIND_LIKES_BY_FILM_QUERY = "SELECT user_id FROM film_likes WHERE film_id = ?";
     private static final String EXISTS_LIKE_QUERY = "SELECT COUNT(*) FROM film_likes WHERE film_id = ? AND user_id = ?";
+    private static final String INCREASE_RATE_QUERY = "UPDATE films SET rate = rate + 1 WHERE film_id = ?";
+    private static final String DECREASE_RATE_QUERY = "UPDATE films SET rate = GREATEST(rate - 1, 0) WHERE film_id = ?";
 
     public void addLike(Long filmId, Long userId) {
         jdbcTemplate.update(ADD_LIKE_QUERY, filmId, userId);
+        jdbcTemplate.update(INCREASE_RATE_QUERY, filmId);
     }
 
     public void removeLike(Long filmId, Long userId) {
         jdbcTemplate.update(REMOVE_LIKE_QUERY, filmId, userId);
+        jdbcTemplate.update(DECREASE_RATE_QUERY, filmId);
     }
 
     public Set<Long> findLikesByFilmId(Long filmId) {
